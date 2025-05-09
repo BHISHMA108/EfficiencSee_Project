@@ -3,8 +3,6 @@ import LoginSignup from './Components/LoginSignup/LoginSignup.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import EmployeePage from './pages/EmployeePage.jsx';
 import ManagersPage from './pages/ManagersPage.jsx'; // Update import
-// import Employee from "./pages/Employee.js"; // Update path if needed
-// import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';  // ✅ Import Router
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // Changed to HashRouter
 
 
@@ -16,7 +14,6 @@ export default function App(){
           <Route path="/" element={<LandingPage/>}/>
           <Route path="/login" element={<LoginSignup/>}/>
           <Route path="/manager" element={<ManagersPage />} /> 
-          {/* <Route path='/employee' element={<EmployeePage/>}/> */}
           <Route path="/employee/*" element={<EmployeePage/>}/>
           <Route path="*" element={<Navigate to="/" />} />
       </Routes>

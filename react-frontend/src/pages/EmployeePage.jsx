@@ -86,7 +86,7 @@ const EmployeeDashboard = () => {
   const navigate = useNavigate();
   return (
     <div className="">
-      <div style={{ background: "#2176ff", height: "4.2rem" }} className="flex flex-row justify-between"><span className="translate-y-4.5"
+      <div style={{ background: "#2176ff" }} className="flex flex-col sm:flex-row sm:justify-between sm:h-[61px]"><span className="translate-y-4.5"
       // onClick={() => navigate("/login")}
       // onClick={handleLogout}
       >  {/* <ArrowBackIcon /> Go Back */}
@@ -99,11 +99,11 @@ const EmployeeDashboard = () => {
         </button>
       
       </span>
-        <h1 className="p-1.5 text-4xl font-medium -translate-x-9">Employee Dashboard</h1><div></div> </div>
+        <h1 className="p-1.5 mt-2 text-3xl sm:text-4xl translate-x-5 font-medium sm:-translate-x-9">Employee Dashboard</h1><div></div> </div>
       <br />
-      <h1 className="flex flex-row justify-center text-2xl font-bold mb-4 mt-2.5">Displaying the Dashboard for user with email : &nbsp; <span className="text-blue-600">{email}</span> </h1>
+      <h1 className="flex flex-col sm:flex-row justify-center text-2xl text-clamp-2 font-bold mb-4 p-4 mt-2.5">Displaying the Dashboard for user with email : &nbsp; <span className="text-blue-600">{email}</span> </h1>
 
-      <div className="flex flex-row justify-center gap-26">
+      <div className="sm:flex flex-row hidden justify-center p-4 gap-26">
         <button
           onClick={startMonitoring}
           className={`px-4 py-2 rounded-lg ${isMonitoring ? "bg-gray-500" : "bg-green-500"} text-white`}
@@ -133,15 +133,6 @@ const EmployeeDashboard = () => {
           <p>Breaks Taken: {report.break_counter}</p>
         </div>
       )}
-      {/* record = {
-        "Date": datetime.now().strftime("%Y-%m-%d"),
-        "elapsed_time": convert_to_hms(elapsed_time),  # Fixed calculation for total monitoring duration
-        "tab_switched_count": tab_switch_count,
-        "active_duration": convert_to_hms(active_duration),
-        "inactive_duration": convert_to_hms(inactive_duration),
-        "break_time": convert_to_hms(total_break_time),
-        "break_counter": break_counter
-    } */}
       <ElapsedTimeDisplay />
     </div>
 

@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const sanitize = require("mongo-sanitize");
-const axios = require("axios");  // Import axios for API calls
 const employeeRoutes = require("./routes/employeeRoutes");
 const monitoringRoutes = require("./routes/monitoring");
 
@@ -120,7 +119,7 @@ app.get("/api/employees/fetch-data", async (req, res) => {
       return res.status(400).json({ error: "Invalid range" });
     }
 
-    // ✅ Fetch records from MongoDB within the date range using `collection().find().toArray()`
+    // Fetch records from MongoDB within the date range using `collection().find().toArray()`
     const EmployeeCollection = mainConn.db.collection(sanitizedEmail);
     const records = await EmployeeCollection.find({ 
       date: { $gte: startDate.toISOString().split("T")[0] }

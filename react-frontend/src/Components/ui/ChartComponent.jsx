@@ -91,7 +91,7 @@ const chartOptions = {
   }
 };
 
-// ✅ **Bar Chart Component**
+//**Bar Chart Component**
 export const BarChart = ({ data, xField, yField, color, title, stacked = false }) => {
   if (!data || !Array.isArray(data) || data.length === 0) {
     return <div className="chart-error">No data available</div>;
@@ -138,7 +138,7 @@ export const BarChart = ({ data, xField, yField, color, title, stacked = false }
   );
 };
 
-// ✅ **Line Chart Component**
+// **Line Chart Component**
 export const LineChart = ({ 
   data, 
   xField, 
@@ -198,7 +198,7 @@ export const LineChart = ({
   );
 };
 
-// ✅ **Pie Chart Component**
+// **Pie Chart Component**
 export const PieChart = ({ 
   data, 
   colors, 

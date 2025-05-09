@@ -19,7 +19,7 @@ import atexit
 # Load environment variables
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
-MODEL_PATH = os.getenv("MODEL_PATH", r"D:\TY\SEM-II\EDAI6\Main-EfficienSee\Final-Local-EfficienSee\backend\efficiensee_Model.h5")
+MODEL_PATH = os.getenv("MODEL_PATH", r"D:\3rd YEAR\Sem-2\EDAI-6\Project EFFICIENCEE\Edai project\Final-Local-EfficienSee\efficiensee_Model.h5")
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -52,7 +52,7 @@ active_duration = 0  # Face detected + user activity
 inactive_duration = 0  # Face detected but no user activity
 total_break_time = 0  # No face detected
 break_counter = 0
-tab_switch_count = -1  # Start at -1 to match original behavior
+tab_switch_count = -2  # Start at -1 to match original behavior
 previous_window = None
 last_activity_time = time.time()
 monitoring_start_time = None
@@ -63,8 +63,8 @@ break_start_time = None
 break_counted = False
 
 # Constants
-IDLE_THRESHOLD = 3  # Seconds of no activity to be considered inactive
-BREAK_THRESHOLD = 5  # Seconds of no face to be considered a break
+IDLE_THRESHOLD = 2  # Seconds of no activity to be considered inactive
+BREAK_THRESHOLD = 3  # Seconds of no face to be considered a break
 CHECK_INTERVAL = 0.1  # 100ms check interval for precise timing
 
 # Helper Functions
@@ -72,8 +72,8 @@ def sanitize_email(email):
     if not email or not isinstance(email, str):
         return ""
     sanitized = email.lower().strip()
-    sanitized = re.sub(r'@', 'at', sanitized)
-    sanitized = re.sub(r'\.', 'dot', sanitized)
+    sanitized = re.sub(r'@', '_at_', sanitized)
+    sanitized = re.sub(r'\.', '_dot_', sanitized)
     return re.sub(r'[^a-z0-9_]', '', sanitized)
 
 def convert_to_hms(seconds):

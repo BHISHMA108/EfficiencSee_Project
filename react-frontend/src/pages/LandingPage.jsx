@@ -8,23 +8,31 @@ import Footer from "../Components/footer/EndFooter.jsx";
 
 const LandingPage = () => {
   useEffect(() => {
-    new LocomotiveScroll({
+    const scroll = new LocomotiveScroll({
       el: document.querySelector("[data-scroll-container]"),
       smooth: true,
     });
+
+    setTimeout(() => {
+      scroll.update();
+    }, 500);
+
+    return () => {
+      scroll.destroy();
+    };
   }, []);
 
   return (
     <div data-scroll-container>
       <Navbar />
-      <section id="home">
+      <section id="home" data-scroll-section>
         <Company />
       </section>
-      <section id="features">
+      <section id="features" data-scroll-section>
         <Featured />
         <Features />
       </section>
-      <section id="contact">
+      <section id="contact" data-scroll-section>
         <Footer />
       </section>
     </div>
