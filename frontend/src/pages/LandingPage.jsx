@@ -1,26 +1,11 @@
 import React, { useEffect } from "react";
 import Navbar from "../Components/Navbar/Navbar";
 import Company from "../Components/Company";
-import LocomotiveScroll from "locomotive-scroll";
 import Featured from "../Components/Featured/Featured";
 import Features from "../Components/Featured/Features";
 import Footer from "../Components/footer/EndFooter.jsx";
 
 const LandingPage = () => {
-  useEffect(() => {
-    const scroll = new LocomotiveScroll({
-      el: document.querySelector("[data-scroll-container]"),
-      smooth: true,
-    });
-
-    setTimeout(() => {
-      scroll.update();
-    }, 500);
-
-    return () => {
-      scroll.destroy();
-    };
-  }, []);
 
   return (
     <div data-scroll-container>
