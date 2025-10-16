@@ -21,7 +21,7 @@ const EmployeeDashboard = () => {
 
     const fetchData = async () => {
       try {
-        const response = await axios.get("https://efficiensee-back-end.onrender.com/api/employees/fetch-data", {
+        const response = await axios.get("https://efficiencsee-backend.onrender.com/api/employees/fetch-data", {
           // params: { employee: sanitizedEmail, range: "day" }
           params: { employee: localStorage.getItem("sanitizedEmail"),  _: Date.now()  },
           headers: {
