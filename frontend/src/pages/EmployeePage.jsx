@@ -43,7 +43,7 @@ const EmployeeDashboard = () => {
 
   const startMonitoring = async () => {
     try {
-      const response = await axios.post("http://localhost:5001/start_monitoring", {});
+      const response = await axios.post("https://efficiencsee-backend.onrender.com/start_monitoring", {});
       console.log("Start Monitoring Response:", response.data);
       setIsMonitoring(true);
     } catch (error) {
@@ -59,7 +59,7 @@ const EmployeeDashboard = () => {
         return;
       }
 
-      const response = await axios.post("http://localhost:5001/stop_monitoring", { email });
+      const response = await axios.post("https://efficiencsee-backend.onrender.com/stop_monitoring", { email });
       console.log("Stop Monitoring Response:", response.data);
       setIsMonitoring(false);
     } catch (error) {
