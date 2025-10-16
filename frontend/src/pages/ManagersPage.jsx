@@ -56,7 +56,7 @@ function ManagerPage() {
     const fetchEmployees = async () => {
       try {
         setEmployeeLoading(true);
-        const response = await axios.get("https://efficiensee-back-end.onrender.com/api/employees");
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/employees`);
         const collections = response.data;
 
         // Filter out empty collections and test entries
@@ -214,7 +214,7 @@ const formatChartData = (data) => {
           endDate: endDate.toISOString().split('T')[0]
         };
 
-        const response = await axios.get("https://efficiensee-back-end.onrender.com/api/test", { params });
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/test`, { params });
         setMongoData(response.data);
         setError(null);
       } catch (error) {

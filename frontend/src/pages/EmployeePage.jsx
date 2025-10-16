@@ -21,7 +21,7 @@ const EmployeeDashboard = () => {
 
     const fetchData = async () => {
       try {
-        const response = await axios.get("https://efficiensee-back-end.onrender.com/api/employees/fetch-data", {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/employees/fetch-data`, {
           // params: { employee: sanitizedEmail, range: "day" }
           params: { employee: localStorage.getItem("sanitizedEmail"),  _: Date.now()  },
           headers: {
@@ -43,7 +43,7 @@ const EmployeeDashboard = () => {
 
   const startMonitoring = async () => {
     try {
-      const response = await axios.post("http://localhost:5001/start_monitoring", {});
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/start_monitoring`, {});
       console.log("Start Monitoring Response:", response.data);
       setIsMonitoring(true);
     } catch (error) {
@@ -59,7 +59,7 @@ const EmployeeDashboard = () => {
         return;
       }
 
-      const response = await axios.post("http://localhost:5001/stop_monitoring", { email });
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/stop_monitoring`, { email });
       console.log("Stop Monitoring Response:", response.data);
       setIsMonitoring(false);
     } catch (error) {
