@@ -119,19 +119,19 @@ try {
       (sum, e) => sum + convertTimeToHours(e.inactive_duration),
       0
     ),
-    totalBreak: data.reduce(
-      (sum, e) => sum + convertTimeToHours(e.break_time),
+    total_break: data.reduce(
+      (sum, e) => sum + convertTimeToHours(e.total_break),
       0
     ),
-    totalSwitches: data.reduce(
-      (sum, e) => sum + (parseInt(e.tab_switched_count) || 0),
+    tab_switches: data.reduce(
+      (sum, e) => sum + (parseInt(e.tab_switches) || 0),
       0
     ),
   };
 
   const todayISO = new Date().toISOString().split("T")[0];
   const todayData = data.find((entry) => entry.date === todayISO); // Changed to find
-
+  console.log(todayData);
   console.log("📅 Today's Data:", todayData);
 
   return (
@@ -170,7 +170,7 @@ try {
                     category: "Inactive Time",
                     value: convertTimeToHours(todayData.inactive_duration),
                   },
-                  // { category: 'Breaks', value: convertTimeToHours(todayData.break_time) }
+                  // { category: 'Breaks', value: convertTimeToHours(todayData.total_break) }
                 ]}
                 xField="category"
                 yField="value"
@@ -250,7 +250,7 @@ try {
                   {key.replace(/avg|total/gi, "").replace(/_/g, " ")}
                 </h3>
                 <p className="mt-2 text-3xl font-semibold text-gray-900">
-                  {value.toFixed(2)} {key.includes("Switches") ? "" : "hrs"}{" "}
+                  {value.toFixed(2)} {key.includes("tab_switches") ? " " : "hrs"}{" "}
                   {/* Conditional check for switches */}
                 </p>
               </div>
@@ -284,7 +284,7 @@ try {
             <PieChart
               data={data.map((entry) => ({
                 name: entry.date,
-                value: convertTimeToHours(entry.break_time),
+                value: convertTimeToHours(entry.total_break),
               }))}
               title="Break Time"
               colors={["#f59e0b", "#f97316"]}
@@ -292,7 +292,7 @@ try {
             <BarChart
               data={data.map((entry) => ({
                 date: entry.date,
-                tab_switches: parseInt(entry.tab_switched_count) || 0,
+                tab_switches: parseInt(entry.tab_switches) || 0,
               }))}
               xField="date"
               yField="tab_switches"

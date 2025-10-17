@@ -215,6 +215,7 @@ const formatChartData = (data) => {
         };
 
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/test`, { params });
+        console.log("Fetched data:", response.data);
         setMongoData(response.data);
         setError(null);
       } catch (error) {

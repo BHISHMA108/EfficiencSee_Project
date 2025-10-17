@@ -206,13 +206,13 @@ app.get("/api/test", async (req, res) => {
     const mappedData = data.map(item => ({
       Date: item.date || "N/A",
       Estimate_time: item.elapsed_time || "00:00:00",
-      Tab_switched: parseInt(item.tab_switched_count) || 0,
+      Tab_switched: parseInt(item.tab_switches) || 0,
       Active_duration: item.active_duration || "00:00:00",
       Inactive_duration: item.inactive_duration || "00:00:00",
-      Total_break_time: item.break_time || "00:00:00",
-      Breaks: parseInt(item.break_counter) || 0,
+      Total_break_time: item.total_break || "00:00:00",
+      Breaks: parseInt(item.break_count) || 0,
       start_time: item.start_time || "09:00:00",
-      stop_time: item.stop_time || "18:00:00"
+      stop_time: item.end_time || "18:00:00"
     }));
 
     res.json(mappedData);

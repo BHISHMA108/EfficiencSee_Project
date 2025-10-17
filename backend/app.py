@@ -213,6 +213,7 @@ def home():
 
 @app.route("/start_monitoring", methods=["POST"])
 def api_start_monitoring():
+    logging.info("🚀 Starting Employee Monitoring System...")
     global monitoring, active_duration, inactive_duration, total_break_time, \
            break_counter, tab_switch_count, monitoring_start_time, face_detected, \
            session_start_time, in_break, break_start_time, break_counted
@@ -287,4 +288,6 @@ def cleanup():
 
 if __name__ == "__main__":
     logging.info("🚀 Starting Employee Monitoring System...")
-    app.run(debug=True, port=5001)
+    # Debug mode OFF for GUI
+    app.run(debug=False, port=5001, use_reloader=False)
+

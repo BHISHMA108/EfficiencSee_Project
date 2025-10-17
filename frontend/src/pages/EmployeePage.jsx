@@ -43,7 +43,7 @@ const EmployeeDashboard = () => {
 
   const startMonitoring = async () => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/start_monitoring`, {});
+      const response = await axios.post(`http://localhost:5001/start_monitoring`, {});
       console.log("Start Monitoring Response:", response.data);
       setIsMonitoring(true);
     } catch (error) {
@@ -59,7 +59,7 @@ const EmployeeDashboard = () => {
         return;
       }
 
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/stop_monitoring`, { email });
+      const response = await axios.post(`http://localhost:5001/stop_monitoring`, { email });
       console.log("Stop Monitoring Response:", response.data);
       setIsMonitoring(false);
     } catch (error) {
@@ -126,7 +126,7 @@ const EmployeeDashboard = () => {
         <div className="mt-5 p-4 bg-gray-100 rounded-lg">
           <h2 className="text-xl font-semibold mb-2">Work Report</h2>
           <p>Total Time: {report.elapsed_time}</p>
-          <p>Tab Switches: {report.tab_switched_count}</p>
+          <p>Tab Switches: {report.tab_switches}</p>
           <p>Active Time: {report.active_duration}</p>
           <p>Inactive Time: {report.inactive_duration}</p>
           <p>Break Time: {report.break_time}</p>
