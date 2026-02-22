@@ -1,6 +1,4 @@
 
----
-
 # Project Overview
 
 This is a full-stack application that combines machine learning, real-time productivity tracking, and clean data visualization. It’s built with React on the frontend, Node.js and Flask on the backend, and uses MongoDB for data storage. The app tracks employee productivity using webcam input and system activity.
