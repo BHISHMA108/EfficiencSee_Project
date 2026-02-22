@@ -1,11 +1,11 @@
 
 ---
 
-## 🔧 Project Overview
+# Project Overview
 
 This is a full-stack application that combines machine learning, real-time productivity tracking, and clean data visualization. It’s built with React on the frontend, Node.js and Flask on the backend, and uses MongoDB for data storage. The app tracks employee productivity using webcam input and system activity.
 
-## 🧠 Tech Stack
+# Tech Stack
 
 * **Frontend**: React.js, ShadCN UI
 * **Backend**: Node.js (Express) and Flask
@@ -13,7 +13,7 @@ This is a full-stack application that combines machine learning, real-time produ
 * **Authentication**: Firebase + JWT
 * **ML Tools**: TensorFlow, Keras
 
-## 📁 Project Structure
+# Project Structure
 
 ### Backend
 
@@ -32,7 +32,7 @@ This is a full-stack application that combines machine learning, real-time produ
 
 * **`firebase.js`** handles user authentication using Firebase and secures endpoints with JWT tokens.
 
-## 📊 Dataset & Model
+# Dataset & Model
 
 The model was trained to classify two categories: `Face` and `Non-Face`.
 
@@ -41,7 +41,7 @@ The model was trained to classify two categories: `Face` and `Non-Face`.
 
 Although a local dataset was prepared, the final model was trained using **Google’s Teachable Machine** for better accuracy and faster development.
 
-## ⚙️ How to Run the Project
+# How to Run the Project
 
 1. Start the **Flask server** by running `app.py`
 2. Start the **Node.js server** by running `server.js`

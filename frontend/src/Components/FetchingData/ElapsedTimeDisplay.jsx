@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { BarChart, LineChart, PieChart } from "../ui/ChartComponent.jsx";
 import axios from "axios";
+import { getAuth } from "firebase/auth";
+
 
 const sanitizedEmail = localStorage.getItem("sanitizedEmail");
 
@@ -87,24 +89,33 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+
       setLoading(true);
-try {
-  const response = await axios.get(
-    `${import.meta.env.VITE_API_URL}/api/employees/fetch-data`,
-    {
-      params: { employee: sanitizedEmail, range },
-    }
-  );
-  setData(response.data);
-  console.log("🚀 Full Data:", response.data);
-}catch (err) {
-        setError(err.response ? err.response.data.error : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [range]);
+      try {
+        
+        const auth = getAuth();
+        const user = auth.currentUser;
+        const token = await user.getIdToken(); // this is the Firebase ID token
+        // console.log("This is the token ",token);
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/employees/fetch-data`,
+          {
+            params: { employee: sanitizedEmail, range },
+            headers:{
+              Authorization : `Bearer ${token}`
+            },
+          }
+        );
+        setData(response.data);
+        console.log("🚀 Full Data:", response.data);
+      }catch (err) {
+              setError(err.response ? err.response.data.error : "An error occurred");
+            } finally {
+              setLoading(false);
+            }
+          };
+          fetchData();
+        }, [range]);
 
   const summary = {
     totalElapsed: data.reduce(

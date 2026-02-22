@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const sanitize = require("mongo-sanitize");
 const employeeRoutes = require("./routes/employeeRoutes");
 const monitoringRoutes = require("./routes/monitoring");
+const {verifyFirebaseToken} = require("./middleware/authMiddleware");
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 }));
 app.use(express.json());
+// app.use("/api", verifyFirebaseToken);
 
 // Database Connection
 const mainConn = mongoose.createConnection(process.env.MONGO_URI, {
@@ -226,6 +228,68 @@ app.get("/api/test", async (req, res) => {
   }
 });
 
+
+// Insert Sequential Date-wise Dummy Data
+app.post("/api/insert-random-data", async (req, res) => {
+  try {
+
+    const collectionName = "uday_dot_dandekar221_at_vit_dot_edu";
+
+    if (mainConn.readyState !== 1) {
+      return res.status(503).json({ error: "Database not connected" });
+    }
+
+    const collection = mainConn.db.collection(collectionName);
+
+    const randomData = [];
+
+    const today = new Date();
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - 30); // last 30 days
+
+    for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+
+      const workHours = Math.floor(Math.random() * 2) + 6; // 6–8 hrs
+      const minutes = Math.floor(Math.random() * 60);
+      const seconds = Math.floor(Math.random() * 60);
+
+      const record = {
+
+        date: d.toISOString().split("T")[0],
+
+        elapsed_time: `${workHours}:${minutes}:${seconds}`,
+
+        tab_switches: Math.floor(Math.random() * 40) + 10,
+
+        active_duration: `${workHours-1}:30:00`,
+
+        inactive_duration: `01:${Math.floor(Math.random()*30)}:00`,
+
+        total_break: `00:${Math.floor(Math.random()*50)}:00`,
+
+        break_count: Math.floor(Math.random() * 4) + 1,
+
+        start_time: "09:00:00",
+
+        end_time: "18:00:00"
+
+      };
+
+      randomData.push(record);
+    }
+
+    await collection.insertMany(randomData);
+
+    res.json({
+      message: "30 days sequential data inserted",
+      recordsInserted: randomData.length
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Start Server

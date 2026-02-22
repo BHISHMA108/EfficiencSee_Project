@@ -1,71 +1,70 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const User = require("../models/User");
-const { sanitizeEmail } = require("../path-to-your-main-server-file"); // Import the sanitize function
+const { sanitizeEmail } = require("../server");
+const { verifyFirebaseToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// User Signup
-router.post("/signup", async (req, res) => {
+/**
+ * 🔐 Post-Firebase Signup Initialization
+ * Firebase handles authentication
+ * This route initializes DB data & role
+ */
+router.post("/signup", verifyFirebaseToken, async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, role } = req.body;
+    console.log("this is the req.body",req.body);
+    const firebaseUid = req.firebaseUser.uid;
 
-    // 🔹 Log original and sanitized email
+    if (!name || !role || !email) {
+      return res.status(400).json({ message: "Name and role are required." });
+    }
+
     const sanitizedEmail = sanitizeEmail(email);
-    console.log(`📝 **Signup Request** - Original Email: ${email}, Sanitized Email: ${sanitizedEmail}`);
+    console.log(`📝 Signup Init → ${email} → ${sanitizedEmail}`);
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Prevent duplicate DB users
+    const existingUser = await User.findOne({ firebaseUid });
+    if (existingUser) {
+      return res.status(409).json({ message: "User already exists." });
+    }
 
-    // Save user in the User model
-    const newUser = new User({ name, email, password: hashedPassword, role });
+    // Save user profile & role
+    const newUser = new User({
+      firebaseUid,
+      role: role.toLowerCase(),
+    });
+
     await newUser.save();
 
-    // 🔹 **Create a new collection dynamically**
-    const dynamicCollectionName = sanitizedEmail; // Use sanitized email for collection name
-    console.log(`📂 Creating collection: ${dynamicCollectionName}`);
+    // Create employee-specific collection
+    if (role.toLowerCase() === "employee") {
+      const dynamicSchema = new mongoose.Schema({}, { strict: false });
 
-    const dynamicSchema = new mongoose.Schema({}, { strict: false });
-    const DynamicModel = mongoose.model(dynamicCollectionName, dynamicSchema, dynamicCollectionName);
+      const DynamicModel = mongoose.model(
+        sanitizedEmail, // model name
+        dynamicSchema, // schema
+        sanitizedEmail // collection name
+      );
 
-    await DynamicModel.create({ message: "New Employee Data Collection Created" });
+      await DynamicModel.create({
+        message: "New Employee Data Collection Created",
+        createdAt: new Date(),
+      });
 
-    res.status(201).json({ 
-      message: "User registered successfully",
-      sanitizedEmail: sanitizedEmail // Optionally return to client
+      console.log(`📂 Collection created: ${sanitizedEmail}`);
+    }
+
+    res.status(201).json({
+      message: "User initialized successfully",
+      email,
+      role,
+      firebaseUid,
+      sanitizedEmail,
     });
   } catch (error) {
     console.error("❌ Signup Error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// User Login
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // 🔹 Log original and sanitized email
-    const sanitizedEmail = sanitizeEmail(email);
-    console.log(`🔐 **Login Attempt** - Original Email: ${email}, Sanitized Email: ${sanitizedEmail}`);
-
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: "User not found" });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
-
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ 
-      token, 
-      role: user.role,
-      sanitizedEmail: sanitizedEmail // Optionally return to client
-    });
-  } catch (error) {
-    console.error("❌ Login Error:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
