@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, LineChart, PieChart } from "../ui/ChartComponent.jsx";
 import axios from "axios";
-import { getAuth } from "firebase/auth";
-
-
-const sanitizedEmail = localStorage.getItem("sanitizedEmail");
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const convertTimeToHours = (timeString) => {
   if (!timeString) return 0;
@@ -86,36 +83,48 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [range, setRange] = useState("week");
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const fetchData = async () => {
-
-      setLoading(true);
-      try {
-        
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const token = await user.getIdToken(); // this is the Firebase ID token
-        // console.log("This is the token ",token);
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/employees/fetch-data`,
-          {
-            params: { employee: sanitizedEmail, range },
-            headers:{
-              Authorization : `Bearer ${token}`
-            },
+    const auth = getAuth();
+    
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setLoading(true);
+        try {
+          const token = await user.getIdToken(); 
+          const emailToUse = localStorage.getItem("sanitizedEmail");
+          
+          if (!emailToUse) {
+            setError("Email not found in local storage.");
+            setLoading(false);
+            return;
           }
-        );
-        setData(response.data);
-        console.log("🚀 Full Data:", response.data);
-      }catch (err) {
-              setError(err.response ? err.response.data.error : "An error occurred");
-            } finally {
-              setLoading(false);
+
+          const response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/api/employees/fetch-data`,
+            {
+              params: { employee: emailToUse, range },
+              headers:{
+                Authorization : `Bearer ${token}`
+              },
             }
-          };
-          fetchData();
-        }, [range]);
+          );
+          setData(response.data);
+          // console.log("🚀 Full Data:", response.data);
+        } catch (err) {
+          setError(err.response ? err.response.data.error : "An error occurred");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setError("User not authenticated.");
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [count, range]);
 
   const summary = {
     totalElapsed: data.reduce(
@@ -140,10 +149,13 @@ const Dashboard = () => {
     ),
   };
 
-  const todayISO = new Date().toISOString().split("T")[0];
-  const todayData = data.find((entry) => entry.date === todayISO); // Changed to find
-  console.log(todayData);
-  console.log("📅 Today's Data:", todayData);
+  // const todayISO = new Date().toISOString().split("T")[0];
+  // const todayData = data.find((entry) => entry.date === todayISO); // Changed to find
+
+  const todayISO = new Date().toLocaleDateString("en-CA");
+  const todayData = data.find(
+    (entry) => entry.date === todayISO
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -152,6 +164,8 @@ const Dashboard = () => {
           Productivity Dashboard
         </h1>
         <p className="text-gray-600">Monitor your performance metrics</p>
+        <button onClick={() =>setCount(count+1)} className="bg-blue-200 p-2 rounded-xl hover:bg-blue-300">Refresh</button>
+
       </header>
 
       {loading ? (

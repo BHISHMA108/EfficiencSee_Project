@@ -1,2 +1,21 @@
-/backend/.env
-node_modules
+# Environment files
+.env
+backend/.env
+frontend/.env
+/backend/build
+/backend/node_modules
+/backend/config
+
+# Node modules
+node_modules/
+
+# Desktop agent (contains ML model)
+desktop_app/
+
+# Build folders
+dist/
+build/
+
+# OS junk
+.DS_Store
+Thumbs.db

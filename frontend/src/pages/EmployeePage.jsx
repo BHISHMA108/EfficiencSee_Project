@@ -22,6 +22,7 @@ const EmployeeDashboard = () => {
     const fetchData = async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/employees/fetch-data`, {
+                // const response = await axios.get(`http://localhost:5001/api/employees/fetch-data`, {
           // params: { employee: sanitizedEmail, range: "day" }
           params: { employee: localStorage.getItem("sanitizedEmail"),  _: Date.now()  },
           headers: {
@@ -43,7 +44,9 @@ const EmployeeDashboard = () => {
 
   const startMonitoring = async () => {
     try {
-      const response = await axios.post(`http://localhost:5001/start_monitoring`, {});
+      const emailId = localStorage.getItem("sanitizedEmail");
+      console.log("emailId",emailId);
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/start_monitoring`, {email: emailId});
       console.log("Start Monitoring Response:", response.data);
       setIsMonitoring(true);
     } catch (error) {
@@ -53,13 +56,13 @@ const EmployeeDashboard = () => {
 
   const stopMonitoring = async () => {
     try {
-      const email = localStorage.getItem("email"); // Retrieve email from localStorage
-      if (!email) {
+      const emailId = localStorage.getItem("sanitizedEmail");
+      if (!emailId) {
         console.error("Error: Email not found in localStorage");
         return;
       }
 
-      const response = await axios.post(`http://localhost:5001/stop_monitoring`, { email });
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/stop_monitoring`, { email: emailId });
       console.log("Stop Monitoring Response:", response.data);
       setIsMonitoring(false);
     } catch (error) {

@@ -10,7 +10,7 @@ const {verifyFirebaseToken} = require("./middleware/authMiddleware");
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 // Add at the top with other middleware
@@ -36,6 +36,7 @@ const mainConn = mongoose.createConnection(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
+app.locals.mainConn = mainConn;
 
 // Verify Connection
 mainConn.on('connected', async () => {
@@ -77,6 +78,11 @@ app.post('/api/employees/create-collection', async (req, res) => {
 
     const collections = await mainConn.db.listCollections().toArray();
     const collectionExists = collections.some(col => col.name === sanitizedEmail);
+
+    if (!collectionExists) {
+      await mainConn.db.createCollection(sanitizedEmail);
+      console.log(`✅ Created new collection: ${sanitizedEmail}`);
+    }
 
     res.status(200).json({ message: collectionExists ? 'Collection already exists' : 'New collection created', collection: sanitizedEmail });
 
