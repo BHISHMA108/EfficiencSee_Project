@@ -18,7 +18,8 @@
     "mongo-sanitize": "^1.1.0",
     "mongoose": "^8.12.1",
     "peers": "^0.1.0",
-    "pyinstaller": "^0.0.1"
+    "pyinstaller": "^0.0.1",
+    "redis": "^5.12.1"
   },
   "description": ""
 }

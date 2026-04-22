@@ -1,38 +1,49 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require("mongoose");
+const { client: client } = require("../redisclient");
 
 // In-memory store for tracking which employees should be monitored
 // Format: { "employee_email": "start" | "stop" }
 const monitoringStatus = {};
 
 // Called by the React Dashboard to START monitoring
-router.post('/start_monitoring', (req, res) => {
+router.post('/start_monitoring', async (req, res) => {
     const { email } = req.body;
     console.log("req.body",req.body);
     if (!email) return res.status(400).json({ error: "Email is required" });
+
+
+    const key = `monitor:status:${email}`;
     
-    monitoringStatus[email] = "start";
+    await client.set(key , "start");
+
+    // monitoringStatus[email] = "start";
     console.log(`[Dashboard] Start monitoring requested for: ${email}`);
     res.json({ message: "Monitoring started successfully", status: "start" });
 });
 
 // Called by the React Dashboard to STOP monitoring
-router.post('/stop_monitoring', (req, res) => {
+router.post('/stop_monitoring', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email is required" });
 
-    monitoringStatus[email] = "stop";
+    const key = `monitor:status:${email}`;
+    await client.set(key , "stop");
+
+    // monitoringStatus[email] = "stop";
     console.log(`[Dashboard] Stop monitoring requested for: ${email}`);
     res.status(200).json({ message: "Monitoring stopped", status: "stop" });
 });
 
 // Called continuously by the Python Desktop Agent to check its status
-router.get('/status/:employeeId', (req, res) => {
+router.get('/status/:employeeId', async (req, res) => {
     const employeeId = req.params.employeeId;
     // Default to 'stop' if not found
-    const status = monitoringStatus[employeeId] || "stop";
-    res.json({ status: status });
+    const key = `monitor:status:${employeeId}`;
+    const status = await client.get(key);
+    // const status = monitoringStatus[employeeId] || "stop";
+    res.json({ status: status || "stop"});
 });
 
 // Called by the Python Desktop Agent to upload metrics when a session ends
@@ -66,7 +77,7 @@ router.post('/upload', async (req, res) => {
         const today = new Date();
         const formattedDate = today.getFullYear() + "-" + 
             String(today.getMonth() + 1).padStart(2, '0') + "-" + 
-            String(today.getDate()).padStart(2, '0');
+             String(today.getDate()).padStart(2, '0');
 
         // Required mapping for frontend compatibility
         const record = {

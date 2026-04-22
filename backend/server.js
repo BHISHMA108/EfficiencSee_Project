@@ -6,6 +6,7 @@ const sanitize = require("mongo-sanitize");
 const employeeRoutes = require("./routes/employeeRoutes");
 const monitoringRoutes = require("./routes/monitoring");
 const {verifyFirebaseToken} = require("./middleware/authMiddleware");
+const {connectRedis} = require("./redisclient")
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ const mainConn = mongoose.createConnection(process.env.MONGO_URI, {
 });
 app.locals.mainConn = mainConn;
 
+connectRedis();
 // Verify Connection
 mainConn.on('connected', async () => {
   console.log('✅ Connected to newEfficienSee_DB');

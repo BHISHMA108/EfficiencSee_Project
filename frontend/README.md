@@ -39,13 +39,13 @@ Go to firebase website and register the project then copy paste the code sample 
         │── package.json
         │── README.md
 
-        VITE_FIREBASE_API_KEY=AIzaSyDIRlOwNAhJFU3ZpcjvECagWdclfaZB-Nc
-        VITE_FIREBASE_AUTH_DOMAIN=efficiencee-aa10c.firebaseapp.com
-        VITE_FIREBASE_PROJECT_ID=efficiencee-aa10c
-        VITE_FIREBASE_STORAGE_BUCKET=efficiencee-aa10c.firebasestorage.app
-        VITE_FIREBASE_MESSAGING_SENDER_ID=316738593068
-        VITE_FIREBASE_APP_ID=1:316738593068:web:2390b95a708e9f8b4e4c89
-        VITE_FIREBASE_MEASUREMENT_ID=G-97X0N5D52D
+        VITE_FIREBASE_API_KEY=
+        VITE_FIREBASE_AUTH_DOMAIN=
+        VITE_FIREBASE_PROJECT_ID=
+        VITE_FIREBASE_STORAGE_BUCKET=
+        VITE_FIREBASE_MESSAGING_SENDER_ID=
+        VITE_FIREBASE_APP_ID=
+        VITE_FIREBASE_MEASUREMENT_ID=
 
 
         💗.now give information of .env and firebase.js to ai to make a login page and other changes for example shown below
