@@ -1,0 +1,63 @@
+Act as a senior software engineer interviewer doing a deep-dive on my project.
+
+I will provide my project codebase. Analyze it strictly based on the actual implementation (not generic assumptions) and generate a structured, interview-ready explanation.
+
+Use a clear, concise format so I can directly speak the answers in an interview.
+
+--------------------------------------
+
+1. High-Level Architecture
+- Identify frontend, backend, database, and external services
+- Explain how components interact
+
+2. Complete Request Flow
+- Step-by-step flow from user action to final response
+- Include API calls, backend processing, and DB interaction
+
+3. Database Design
+- Collections/tables used
+- Important fields
+- Relationships (if any)
+- Indexing strategy (or missing indexing)
+
+4. Scaling Considerations
+- How current system handles concurrent users
+- Bottlenecks in the current implementation
+- Practical improvements for better scalability
+
+5. Technology Choices (WHY)
+For each major technology used (React, Node.js, MongoDB, Firebase, Python, Nginx, etc.):
+- Why this was chosen in THIS project
+- What specific problem it solves here
+
+6. Trade-offs (VERY IMPORTANT)
+For each major design decision:
+- Advantages
+- Limitations
+- What breaks at scale and WHY
+
+7. Failure Handling / Edge Cases
+Identify real-world scenarios:
+- Agent crash
+- Network failure
+- Backend downtime
+- Data loss scenarios
+- High concurrency spikes
+
+For each:
+- What currently happens in my system
+- What problems arise
+- How to fix it in production (practical solutions only)
+
+8. Production-Level Improvements (100k+ users)
+- Concrete upgrades (not theory)
+- Architecture changes (e.g., Redis, queues, WebSockets, etc.)
+- Data handling improvements
+
+--------------------------------------
+
+IMPORTANT INSTRUCTIONS:
+- Do NOT give generic textbook explanations
+- Base everything strictly on my actual code and structure
+- Keep answers concise, structured, and interview-ready
+- Prefer clarity over length
