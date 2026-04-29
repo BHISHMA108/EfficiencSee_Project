@@ -73,14 +73,14 @@ function ManagerPage() {
         alert("Failed to update role");
       }
     } catch(err){
-      console.log("this is the error", err);
+      // console.log("this is the error", err);
       alert("Failed to update role");
     }
   }
 
   useEffect(() => {
     const onConnect = () => {
-      console.log("Connected to Socket.IO server");
+      // console.log("Connected to Socket.IO server");
     };
 
     let onMonitoringStatusUpdated = (data)=>{
@@ -97,12 +97,12 @@ function ManagerPage() {
           }
         })
       })
-      console.log("Monitoring status updated", data);
-      console.log("employee data", employees);
+      // console.log("Monitoring status updated", data);
+      // console.log("employee data", employees);
     }
 
     const onDisconnect = () => {
-      console.log("Disconnected from Socket.IO server");
+      // console.log("Disconnected from Socket.IO server");
     };
 
     socket.on("connect", onConnect);

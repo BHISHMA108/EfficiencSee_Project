@@ -61,7 +61,7 @@ const LoginSignup = () => {
 
       try {
         const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/add-user`, userData);
-        console.log("user data added to mongodb", res.data);
+        // console.log("user data added to mongodb", res.data);
       } catch (err) {
         console.error("Error saving user to MongoDB:", err);
         throw new Error("Failed to save user data");
@@ -81,7 +81,7 @@ const LoginSignup = () => {
             throw new Error(result.error || "Failed to create collection");
           }
 
-          console.log("MongoDB Response:", result);
+          // console.log("MongoDB Response:", result);
           if (result.collection) {
             localStorage.setItem("sanitizedCollectionName", result.collection);
           }

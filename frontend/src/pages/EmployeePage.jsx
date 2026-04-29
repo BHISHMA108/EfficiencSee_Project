@@ -45,9 +45,9 @@ const EmployeeDashboard = () => {
   const startMonitoring = async () => {
     try {
       const emailId = localStorage.getItem("sanitizedEmail");
-      console.log("emailId",emailId);
+      // console.log("emailId",emailId);
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/start_monitoring`, {email: emailId});
-      console.log("Start Monitoring Response:", response.data);
+      // console.log("Start Monitoring Response:", response.data);
       setIsMonitoring(true);
     } catch (error) {
       console.error("Error starting monitoring:", error.response ? error.response.data : error.message);
@@ -63,7 +63,7 @@ const EmployeeDashboard = () => {
       }
 
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/stop_monitoring`, { email: emailId });
-      console.log("Stop Monitoring Response:", response.data);
+      // console.log("Stop Monitoring Response:", response.data);
       setIsMonitoring(false);
     } catch (error) {
       console.error(
