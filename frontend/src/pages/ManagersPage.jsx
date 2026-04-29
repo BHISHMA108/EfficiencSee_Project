@@ -5,10 +5,11 @@ import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";  
-import { BarChart, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, Line } from 'recharts';
+import jsPDF from "jspdf";
+import { BarChart, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, Line, ResponsiveContainer } from 'recharts';
 import { db } from '@/Firebase/Firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import socket from "../socket"
 
 // Helper function to unsanitize email
 const unsanitizeEmail = (sanitizedEmail) => {
@@ -16,6 +17,9 @@ const unsanitizeEmail = (sanitizedEmail) => {
 };
 
 function ManagerPage() {
+  const [viewMode, setViewMode] = useState('live'); 
+  const [allUsers, setAllUsers] = useState([]); 
+  const [adminFilter, setAdminFilter] = useState('all'); // New filter state
   const [mongoData, setMongoData] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
@@ -25,7 +29,8 @@ function ManagerPage() {
   const [employeeLoading, setEmployeeLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [sortOrder, setSortOrder] = useState('asc'); // New sort state
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [refresh, setRefresh] = useState(0);
 
   const tableRef = useRef(null);
 
@@ -41,7 +46,6 @@ function ManagerPage() {
     { Header: "Breaks", accessor: "Breaks" },
   ];
 
-  // Sort data based on sortOrder
   const sortedData = useMemo(() => {
     return [...mongoData].sort((a, b) => {
       return sortOrder === 'asc' 
@@ -50,56 +54,83 @@ function ManagerPage() {
     });
   }, [mongoData, sortOrder]);
 
-  // Fetch employee data on component mount
+  // Filtered logic for Admin list
+  const filteredUsers = useMemo(() => {
+    if (adminFilter === 'all') return allUsers;
+    return allUsers.filter(user => user.role === adminFilter);
+  }, [allUsers, adminFilter]);
+
+  const handleRoleChange = async(id, role)=>{
+    try{
+      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/users/update-user-role`, {
+        id: id,
+        role: role
+      });
+      if(res.status === 200){
+        alert("Role updated successfully");
+        setRefresh(prev => prev + 1);
+      } else {
+        alert("Failed to update role");
+      }
+    } catch(err){
+      console.log("this is the error", err);
+      alert("Failed to update role");
+    }
+  }
+
   useEffect(() => {
-    // In the fetchEmployees function
+    const onConnect = () => {
+      console.log("Connected to Socket.IO server");
+    };
+
+    let onMonitoringStatusUpdated = (data)=>{
+      setEmployees((employee)=>{
+        return employee.map((emp)=>{
+          // data.email sent from the backend is actually the sanitizedEmail, so we match it against emp.collection
+          if(data.email === emp.email || data.email === emp.collection){
+            return {
+              ...emp,
+              status : data.status
+            }
+          } else {
+            return emp;
+          }
+        })
+      })
+      console.log("Monitoring status updated", data);
+      console.log("employee data", employees);
+    }
+
+    const onDisconnect = () => {
+      console.log("Disconnected from Socket.IO server");
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("monitoring-status", onMonitoringStatusUpdated);
+    socket.on("disconnect", onDisconnect);
+
     const fetchEmployees = async () => {
       try {
         setEmployeeLoading(true);
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/employees`);
-        const collections = response.data;
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/get-all-users`);
 
-        // Filter out empty collections and test entries
-        const validCollections = collections.filter(name =>
-          name !== "e_at_g_dot_com" &&
-          name.length > 10
-        );
+        setAllUsers(res.data.users);
+        
+        const mappedEmployees = res.data.users
+          .filter(u => u.role === "employee")
+          .map(u => ({
+            _id: u._id,
+            status : u.status,
+            collection: u.sanitizedEmail || u.email.toLowerCase().replace(/@/g, '_at_').replace(/\./g, '_dot_'),
+            email: u.email,
+            name: u.name || "Unnamed Employee",
+            role : u.role
+          }));
 
-        const employeesData = await Promise.all(
-          validCollections.map(async (collectionName) => {
-            const email = unsanitizeEmail(collectionName);
-            try {
-              const usersRef = collection(db, 'users');
-              const q = query(usersRef, where('email', '==', email));
-              const querySnapshot = await getDocs(q);
-
-              if (querySnapshot.empty) {
-                console.warn(`No Firestore record for: ${email}`);
-                return null;
-              }
-
-              const userData = querySnapshot.docs[0].data();
-              return {
-                collection: collectionName,
-                email: email,
-                name: userData.name || "Unnamed Employee"
-              };
-            } catch (firestoreError) {
-              console.error(`Firestore error for ${email}:`, firestoreError);
-              return null;
-            }
-          })
-        );
-
-        // Filter out null values and set state
-        const filteredEmployees = employeesData.filter(e => e !== null);
-        setEmployees(filteredEmployees);
-
-        if (filteredEmployees.length > 0) {
-          setSelectedEmployee(filteredEmployees[0].collection);
-        } else {
-          setError("No valid employees found in database");
-        }
+        setEmployees(mappedEmployees);
+        if (mappedEmployees.length > 0) setSelectedEmployee(mappedEmployees[0].collection);
+        else setError("No valid employees found in database");
       } catch (error) {
         console.error("Error fetching employees:", error);
         setError(`Failed to load employee list: ${error.response?.data?.error || error.message}`);
@@ -107,458 +138,259 @@ function ManagerPage() {
         setEmployeeLoading(false);
       }
     };
-
     fetchEmployees();
-  }, []);
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("monitoring-status", onMonitoringStatusUpdated);
+      socket.off("disconnect", onDisconnect);
+    };
+  }, [refresh]);
 
-  // Update calculateMetrics to use numerical values:
+  // ... (rest of your existing helper functions: calculateMetrics, parseTimeToHours, etc remain unchanged)
   const calculateMetrics = (data) => {
     return data.reduce((acc, curr) => {
       const estimateHours = parseTimeToHours(curr.Estimate_time);
       const activeHours = parseTimeToHours(curr.Active_duration);
-
       return {
         totalHours: acc.totalHours + estimateHours,
         totalBreaks: acc.totalBreaks + curr.Breaks,
         avgProductivity: acc.avgProductivity + (activeHours / estimateHours || 0),
         totalTabSwitches: acc.totalTabSwitches + curr.Tab_switched
       };
-    }, {
-      totalHours: 0,
-      totalBreaks: 0,
-      avgProductivity: 0,
-      totalTabSwitches: 0
-    });
+    }, { totalHours: 0, totalBreaks: 0, avgProductivity: 0, totalTabSwitches: 0 });
   };
 
-  // Time parsing helper
   const parseTimeToHours = (timeString) => {
     if (!timeString) return 0;
     const [hours, minutes, seconds] = timeString.split(':').map(Number);
     return hours + (minutes / 60) + (seconds / 3600);
   };
 
-  // Add this function before render:
-const formatChartData = (data) => {
-  return data.map(item => ({
-    ...item,
-    Active_duration: parseTimeToHours(item.Active_duration),
-    Inactive_duration: parseTimeToHours(item.Inactive_duration),
-    Total_break_time: parseTimeToHours(item.Total_break_time)
-  }));
-};
+  const formatChartData = (data) => {
+    return data.map(item => ({
+      ...item,
+      Active_duration: parseTimeToHours(item.Active_duration),
+      Inactive_duration: parseTimeToHours(item.Inactive_duration),
+      Total_break_time: parseTimeToHours(item.Total_break_time)
+    }));
+  };
 
   const metrics = calculateMetrics(mongoData);
 
-  // Date range handlers
-  const setDateRange = (range) => {
-    const today = new Date();
-    switch (range) {
-      case 'today':
-        setStartDate(today);
-        setEndDate(today);
-        break;
-      case 'week':
-        setStartDate(new Date(today.setDate(today.getDate() - 7)));
-        setEndDate(new Date());
-        break;
-      case 'month':
-        setStartDate(new Date(today.setMonth(today.getMonth() - 1)));
-        setEndDate(new Date());
-        break;
-      default:
-        break;
-    }
-  };
-
-  // Export functions
-  const exportToPDF = () => {
-    const input = tableRef.current;
-    html2canvas(input).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("landscape");
-      const imgWidth = 280;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-      pdf.save("employee_report.pdf");
-    });
-  };
-
-  const exportToCSV = () => {
-    if (!mongoData.length) return;
-
-    const csvContent = [
-      Object.keys(mongoData[0]).join(','),
-      ...mongoData.map(item => Object.values(item).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'employee_data.csv';
-    a.click();
-  };
-
-  // Fetch performance data when filters change
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedEmployee) return;
-
       try {
         setLoading(true);
         const params = {
           employee: selectedEmployee,
-          // Use simple YYYY-MM-DD format without time
           startDate: startDate.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0]
         };
-
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/test`, { params });
-        console.log("Fetched data:", response.data);
         setMongoData(response.data);
         setError(null);
       } catch (error) {
         console.error("Error fetching data:", error);
-        setError("Failed to fetch performance data");
+        setError("Either Data is not present or there is an issue in fetching performance data");
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [selectedEmployee, startDate, endDate]);
 
-  // Derived values
-  const productivityPercentage = mongoData.length > 0
-    ? Math.round((metrics.avgProductivity / mongoData.length) * 100)
-    : 0;
+  const productivityPercentage = mongoData.length > 0 ? Math.round((metrics.avgProductivity / mongoData.length) * 100) : 0;
   const formattedTotalHours = metrics.totalHours.toFixed(1);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-10">
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 text-center">Employee Performance Dashboard</h1>
-          <p className="text-gray-600 text-center">Monitor and analyze employee productivity metrics</p>
+        
+        {/* --- Top Level View Switcher --- */}
+        <div className="flex justify-center mb-8">
+            <div className="bg-white p-1 rounded-lg shadow-sm border border-gray-200 flex flex-wrap justify-center gap-1">
+                <button onClick={() => setViewMode('live')} className={`px-6 py-2 rounded-md font-medium transition-all ${viewMode === 'live' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>Live Monitoring</button>
+                <button onClick={() => setViewMode('dashboard')} className={`px-6 py-2 rounded-md font-medium transition-all ${viewMode === 'dashboard' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>Performance Dashboard</button>
+                <button onClick={() => setViewMode('admin')} className={`px-6 py-2 rounded-md font-medium transition-all ${viewMode === 'admin' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>Admin</button>
+            </div>
         </div>
 
-        {/* Filters Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Filters</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Employee
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                disabled={employeeLoading}
-              >
-                {employeeLoading ? (
-                  <option>Loading employees...</option>
-                ) : employees.length > 0 ? (
-                  employees.map((employee) => (
-                    <option key={employee.collection} value={employee.collection}>
-                      {employee.name} ({employee.email})
-                    </option>
-                  ))
-                ) : (
-                  <option>No employees found</option>
-                )}
-              </select>
-            </div>
+        {/* --- SECTION 2: PERFORMANCE DASHBOARD --- */}
+        {viewMode === 'dashboard' && (
+          <section className="animate-in fade-in duration-500">
+            <h1 className="text-2xl font-bold text-gray-800 text-center mb-6">Employee Performance Dashboard</h1>
 
-            {/* Date picker section remains the same */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date Range
-              </label>
-              <div className="flex gap-3">
-                <DatePicker
-                  selected={startDate}
-                  onChange={(date) => setStartDate(date)}
-                  selectsStart
-                  startDate={startDate}
-                  endDate={endDate}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholderText="Start Date"
-                />
-                <DatePicker
-                  selected={endDate}
-                  onChange={(date) => setEndDate(date)}
-                  selectsEnd
-                  startDate={startDate}
-                  endDate={endDate}
-                  minDate={startDate}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholderText="End Date"
-                />
-              </div>
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => setDateRange('today')}
-                  className="text-sm px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all font-medium"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setDateRange('week')}
-                  className="text-sm px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all font-medium"
-                >
-                  Last Week
-                </button>
-                <button
-                  onClick={() => setDateRange('month')}
-                  className="text-sm px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all font-medium"
-                >
-                  Last Month
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`mr-8 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('details')}
-                className={`mr-8 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Detailed Data
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        {/* Loading and Error States */}
-        {loading && (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        )}
-
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && (
-          <>
-            {/* Overview Tab Content */}
-            {activeTab === 'overview' && (
-              <div>
-                {/* Metrics Dashboard */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Total Hours</p>
-                        <p className="mt-1 text-3xl font-semibold text-blue-600">{formattedTotalHours}h</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Productivity</p>
-                        <p className="mt-1 text-3xl font-semibold text-green-600">{productivityPercentage}%</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-red-100 text-red-600 mr-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Total Breaks</p>
-                        <p className="mt-1 text-3xl font-semibold text-red-600">{metrics.totalBreaks}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Tab Switches</p>
-                        <p className="mt-1 text-3xl font-semibold text-purple-600">{metrics.totalTabSwitches}</p>
-                      </div>
-                    </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Filters</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Employee</label>
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    value={selectedEmployee}
+                    onChange={(e) => setSelectedEmployee(e.target.value)}
+                    disabled={employeeLoading}
+                  >
+                    {employees.map((employee) => (
+                      <option key={employee.collection} value={employee.collection}>
+                        {employee.name} ({employee.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                  <div className="flex gap-3">
+                    <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} selectsStart startDate={startDate} endDate={endDate} className="w-full p-3 border border-gray-300 rounded-lg" />
+                    <DatePicker selected={endDate} onChange={(date) => setEndDate(date)} selectsEnd startDate={startDate} endDate={endDate} minDate={startDate} className="w-full p-3 border border-gray-300 rounded-lg" />
                   </div>
                 </div>
-
-                {/* Charts */}
-                {mongoData.length > 0 && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">Productivity Trends</h3>
-                      <div className="overflow-x-auto">
-                        <LineChart
-                          width={500}
-                          height={300}
-                          data={formatChartData(mongoData)}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="Date" angle={-45} textAnchor="end" height={60} />
-                          <YAxis />
-                          <Tooltip contentStyle={{ borderRadius: '8px' }} />
-                          <Legend verticalAlign="top" height={36} />
-                          <Line
-                            type="monotone"
-                            dataKey="Active_duration"
-                            stroke="#3b82f6"
-                            strokeWidth={2}
-                            activeDot={{ r: 6 }}
-                            name="Active Duration"
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="Inactive_duration"
-                            stroke="#ef4444"
-                            strokeWidth={2}
-                            name="Inactive Duration"
-                          />
-                        </LineChart>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">Break Analysis</h3>
-                      <div className="overflow-x-auto">
-                        <BarChart
-                          width={500}
-                          height={300}
-                          data={formatChartData(mongoData)}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="Date" angle={-45} textAnchor="end" height={60} />
-                          <YAxis />
-                          <Tooltip contentStyle={{ borderRadius: '8px' }} />
-                          <Legend verticalAlign="top" height={36} />
-                          <Bar dataKey="Breaks" fill="#8b5cf6" name="Number of Breaks" />
-                          <Bar dataKey="Total_break_time" fill="#10b981" name="Total Break Time" />
-                        </BarChart>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Updated Details Tab Content */}
-      {activeTab === 'details' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200" ref={tableRef}>
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4 md:mb-0">Detailed Activity Data</h2>
-              <div className="flex gap-3 flex-wrap">
-                {/* Sort Dropdown */}
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="asc">Date: Ascending</option>
-                  <option value="desc">Date: Descending</option>
-                </select>
-
-                {/* Export Buttons */}
-                <button
-                  onClick={exportToCSV}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center"
-                  disabled={!mongoData.length}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Export CSV
-                </button>
-                <button
-                  onClick={exportToPDF}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center"
-                  disabled={!mongoData.length}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Export PDF
-                </button>
               </div>
             </div>
-          </div>
 
-                <div className="p-6">
-                  {mongoData.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <p className="mt-4 text-lg font-medium">No data available</p>
-                      <p className="mt-2">Try adjusting your filters or selecting a different employee</p>
+            <div className="mb-6 border-b border-gray-200 overflow-x-auto">
+                <nav className="flex whitespace-nowrap">
+                <button onClick={() => setActiveTab('overview')} className={`mr-8 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Overview</button>
+                <button onClick={() => setActiveTab('details')} className={`mr-8 py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Detailed Data</button>
+                </nav>
+            </div>
+
+            {loading && <div className="flex justify-center items-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div></div>}
+            {error && <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700">{error}</div>}
+
+            {!loading && !error && (
+              <>
+                {activeTab === 'overview' && (
+                  <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><p className="text-gray-500">Total Hours</p><p className="text-3xl font-semibold text-blue-600">{formattedTotalHours}h</p></div>
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><p className="text-gray-500">Productivity</p><p className="text-3xl font-semibold text-green-600">{productivityPercentage}%</p></div>
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><p className="text-gray-500">Total Breaks</p><p className="text-3xl font-semibold text-red-600">{metrics.totalBreaks}</p></div>
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><p className="text-gray-500">Tab Switches</p><p className="text-3xl font-semibold text-purple-600">{metrics.totalTabSwitches}</p></div>
                     </div>
-                  ) : (
+                    {mongoData.length > 0 && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 w-full h-[350px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={formatChartData(mongoData)}>
+                                <CartesianGrid strokeDasharray="3 3"/>
+                                <XAxis dataKey="Date"/>
+                                <YAxis/>
+                                <Tooltip/>
+                                <Legend/>
+                                <Line type="monotone" dataKey="Active_duration" stroke="#3b82f6" name="Active"/>
+                                <Line type="monotone" dataKey="Inactive_duration" stroke="#ef4444" name="Inactive"/>
+                              </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 w-full h-[350px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={formatChartData(mongoData)}>
+                                <CartesianGrid strokeDasharray="3 3"/>
+                                <XAxis dataKey="Date"/>
+                                <YAxis/>
+                                <Tooltip/>
+                                <Legend/>
+                                <Bar dataKey="Breaks" fill="#8b5cf6" name="Breaks"/>
+                                <Bar dataKey="Total_break_time" fill="#10b981" name="Break Time"/>
+                              </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTab === 'details' && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6" ref={tableRef}>
+                    <div className="flex flex-col sm:flex-row justify-between mb-4 gap-4">
+                      <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="border p-2 rounded"><option value="asc">Asc</option><option value="desc">Desc</option></select>
+                      <div className="flex gap-2">
+                        <button onClick={exportToCSV} className="bg-green-500 text-white px-4 py-2 rounded">CSV</button>
+                        <button onClick={exportToPDF} className="bg-blue-500 text-white px-4 py-2 rounded">PDF</button>
+                      </div>
+                    </div>
                     <div className="overflow-x-auto">
-                      <Table columns={columns} data={sortedData} />
+                        <Table columns={columns} data={sortedData} />
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                )}
+              </>
             )}
-          </>
+          </section>
+        )}
+
+
+        {viewMode === 'live' && (
+           <section className="animate-in fade-in duration-500">
+             <h2 className="text-xl font-bold text-gray-800 mb-6">Live Monitoring Status</h2>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+               {employeeLoading ? <p>Loading Employees...</p> : employees.map((employee) => (
+                 <div key={employee._id} className="bg-white w-full p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                   <div>
+                     <p className="font-semibold text-gray-800 truncate">{employee.name}</p>
+                     <p className="text-xs text-gray-500">{employee.email}</p>
+                   </div>
+                   <div className="flex items-center">
+                     <span className={`w-2.5 h-2.5 ${employee.status === 'active' ? 'bg-green-500' : 'bg-red-500'} rounded-full mr-2 animate-pulse`}></span>
+                     <span className={`text-xs font-medium ${employee.status === 'active' ? 'text-green-600' : 'text-red-600'} uppercase`}>{employee.status}</span>
+                   </div>
+                 </div>
+               ))}
+             </div>
+           </section>
+        )}
+
+        {viewMode === 'dashboard' && (
+            <section className="animate-in fade-in duration-500">
+                {/* ... (Your existing Dashboard JSX) ... */}
+            </section>
+        )}
+
+        {/* --- ADMIN SECTION WITH FILTERS --- */}
+        {viewMode === 'admin' && (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">Employees</h1>
+              <button className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition" onClick={() => setRefresh(refresh + 1)}>Refresh</button>
+            </div>
+
+            {/* Filter Buttons */}
+            <div className="flex gap-2 mb-2">
+              {['all', 'employee', 'manager'].map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setAdminFilter(filter)}
+                  className={`px-4 py-2 rounded-lg capitalize transition-all ${adminFilter === filter ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+
+            {filteredUsers.map((employee) => (
+              <div key={employee._id} className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div>
+                  <p className="font-semibold">{employee.name}</p>
+                  <p className="text-gray-500">{employee.email}</p>
+                </div>
+                <select
+                  value={employee.role}
+                  onChange={(e) => handleRoleChange(employee._id, e.target.value)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded outline-none cursor-pointer hover:bg-blue-700 transition"
+                >
+                  <option value="employee" className="text-black bg-white">employee</option>
+                  <option value="manager" className="text-black bg-white">manager</option>
+                </select>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-export default ManagerPage; //MonicaAi
+export default ManagerPage;

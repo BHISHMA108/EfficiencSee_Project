@@ -14,7 +14,7 @@ const Company = () => {
       <div className="absolute inset-0 z-0">
         <img
           className="w-full h-full object-cover object-center animate-kenburns"
-          src="/src/Components/Assets/company.jpg"
+          src="/company.jpg"
           alt="Workplace collaboration"
         />
       </div>

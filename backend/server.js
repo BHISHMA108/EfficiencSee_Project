@@ -6,12 +6,47 @@ const sanitize = require("mongo-sanitize");
 const employeeRoutes = require("./routes/employeeRoutes");
 const monitoringRoutes = require("./routes/monitoring");
 const {verifyFirebaseToken} = require("./middleware/authMiddleware");
+const userRoutes = require("./routes/userRoutes");
+
+//Redis Connection
 const {connectRedis} = require("./redisclient")
+const {client : redisClient} = require("./redisclient");
+
+//Websocket connections
+const {createServer} = require("http");
+const {Server} = require("socket.io");
+
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+//Create http server from express app
+const httpServer = createServer(app);
+
+//Create websocket server from http server
+const io = new Server(httpServer , {
+  cors : {
+    origin: ["https://efficiencsee-frontend.onrender.com",'http://localhost:5173'],
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
+})
+
+// 🔱IMP: Make io available in routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+io.on("connection", async (socket)=>{
+  console.log(`The user with ID ${socket.id} has connected`);
+
+  socket.on("disconnect" , ()=>{
+    console.log(`The user with ID ${socket.id} has disconnected`);
+  })
+})
 
 // Middleware
 // Add at the top with other middleware
@@ -32,14 +67,20 @@ app.use(express.json());
 // app.use("/api", verifyFirebaseToken);
 
 // Database Connection
-const mainConn = mongoose.createConnection(process.env.MONGO_URI, {
+mongoose.connect(process.env.MONGO_URI, {
   dbName: 'newEfficienSee_DB',
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
+const mainConn = mongoose.connection;
 app.locals.mainConn = mainConn;
 
+//Redis Connection
 connectRedis();
+
+//Socket Connection
+
+
 // Verify Connection
 mainConn.on('connected', async () => {
   console.log('✅ Connected to newEfficienSee_DB');
@@ -144,15 +185,16 @@ app.get("/api/employees/fetch-data", async (req, res) => {
   }
 });
 
+// Existing routes
+app.use("/api/employees", employeeRoutes);
+app.use('/api', monitoringRoutes);
+app.use("/api/users", userRoutes);
+
 // Middleware for error handling
 app.use((err, req, res, next) => {
   console.error("❌ Unexpected Error:", err.stack);
   res.status(500).send('Something broke!');
 });
-
-// Existing routes
-app.use("/api/employees", employeeRoutes);
-app.use('/api', monitoringRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
@@ -301,7 +343,7 @@ app.post("/api/insert-random-data", async (req, res) => {
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Start Server
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
 

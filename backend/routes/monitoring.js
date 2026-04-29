@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require("mongoose");
 const { client: client } = require("../redisclient");
+const User = require("../models/User");
 
 // In-memory store for tracking which employees should be monitored
 // Format: { "employee_email": "start" | "stop" }
@@ -16,11 +17,26 @@ router.post('/start_monitoring', async (req, res) => {
 
     const key = `monitor:status:${email}`;
     
-    await client.set(key , "start");
+    await client.set(key , "active");
+    await User.findOneAndUpdate({ sanitizedEmail: email }, { status: "active" });
 
+    const status = await client.get(key);
+
+    //Emits real time updates to dashboard
+    req.io.emit("monitoring-status", {
+        email,
+        status: status
+    })
+
+    console.log(`Realtime emitted for ${email}`);
+
+    res.status(200).json({
+        email,
+        status: status
+    })
     // monitoringStatus[email] = "start";
     console.log(`[Dashboard] Start monitoring requested for: ${email}`);
-    res.json({ message: "Monitoring started successfully", status: "start" });
+    // res.json({ message: "Monitoring started successfully", status: "active" });
 });
 
 // Called by the React Dashboard to STOP monitoring
@@ -29,11 +45,25 @@ router.post('/stop_monitoring', async (req, res) => {
     if (!email) return res.status(400).json({ error: "Email is required" });
 
     const key = `monitor:status:${email}`;
-    await client.set(key , "stop");
+    await client.set(key , "inactive");
+    await User.findOneAndUpdate({ sanitizedEmail: email }, { status: "inactive" });
+
+    const status = await client.get(key);
+
+    //Emits real time updates to dashboard
+    req.io.emit("monitoring-status", {
+        email,
+        status: status
+    })
+
+    res.status(200).json({
+        email,
+        status: status
+    })
 
     // monitoringStatus[email] = "stop";
     console.log(`[Dashboard] Stop monitoring requested for: ${email}`);
-    res.status(200).json({ message: "Monitoring stopped", status: "stop" });
+    // res.status(200).json({ message: "Monitoring stopped", status: "stop" });
 });
 
 // Called continuously by the Python Desktop Agent to check its status
@@ -43,7 +73,7 @@ router.get('/status/:employeeId', async (req, res) => {
     const key = `monitor:status:${employeeId}`;
     const status = await client.get(key);
     // const status = monitoringStatus[employeeId] || "stop";
-    res.json({ status: status || "stop"});
+    res.json({ status: status || "inactive"});
 });
 
 // Called by the Python Desktop Agent to upload metrics when a session ends

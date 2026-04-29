@@ -85,7 +85,47 @@ pip install -r requirements.txt
 # Run directly in development:
 python desktop_agent.py
 
-# Build as a standalone Windows .exe:
-pyinstaller --noconfirm --onedir --windowed --add-data "model/efficiensee_Model.h5;model" desktop_agent.py
+Ran command: `pyinstaller --noconfirm --onefile --windowed --add-data "model\\efficiensee_Model.h5;model" desktop_agent.py`
+Viewed README.md:86-95
+Listed directory model
+
+```
+Everything in your `desktop_app` folder looks correct! The `model` folder contains `efficiensee_Model.h5`, and your `desktop_agent.py` code correctly points to it using the `get_resource_path()` function.
+
+The reason your previous command took over 13 minutes and why you likely aborted it is because **`--onefile` takes a very long time to build** when you are importing massive libraries like `tensorflow`, `keras`, and `cv2`. It also takes a long time to start up when double-clicked because it has to extract gigabytes of libraries to a temporary folder every single time.
+
+Here are the exact commands you should use:
+
+### 1. Command for Debugging (Fast Build & Shows Errors)
+Run this command to test if your app works without any missing imports or errors. 
+```powershell
+pyinstaller --clean --noconfirm --onedir --console --add-data "model;model" desktop_agent.py
+```
+**Why use this for debugging?**
+*   **`--onedir`**: Instead of a single file, it creates a folder containing the `.exe` and all its library files. This **builds much faster** and the app **starts instantly**, making it perfect for rapid testing.
+*   **`--console`**: Keeps the terminal open so if the app crashes, you can read the error logs instead of the app just disappearing.
+
+*(After this finishes, run `dist\desktop_agent\desktop_agent.exe` and check the console window for any errors).*
+
+---
+
+### 2. Command for Final Production Build (Slow Build, Single File, No Console)
+Only run this command **after** you have confirmed the `--onedir` debugging version works perfectly.
+
+```powershell
+pyinstaller --clean --noconfirm --onefile --windowed --add-data "model;model" desktop_agent.py
+```
+**Why use this for final production?**
+*   **`--onefile`**: Packages your entire app and all dependencies into one single portable `.exe` file (this will take a while to build and will be a large file).
+*   **`--windowed`**: Hides the ugly console window so the app runs smoothly in the background like a normal background agent.
+
+### A Quick Note on Machine Learning Libraries:
+If your debugging app crashes immediately and says something like `ModuleNotFoundError: No module named 'tensorflow...'` in the console window, you might need to explicitly tell PyInstaller to grab everything for those heavy libraries by adding `--collect-all` tags. If that happens, you would run:
+
+```powershell
+pyinstaller --clean --noconfirm --onedir --console --add-data "model;model" --collect-all tensorflow --collect-all keras desktop_agent.py
+```
+But for now, try the standard Debugging command first and see if it works!
+
 ```
 *(The generated executable will be saved inside `desktop_app/dist/desktop_agent/desktop_agent.exe`)*

@@ -9,6 +9,7 @@ import {
 import { doc, setDoc, getDoc } from "firebase/firestore"; 
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, User, Briefcase } from "react-feather";
+import axios from "axios"
 
 const LoginSignup = () => {
   const [action, setAction] = useState("Sign up");
@@ -49,6 +50,22 @@ const LoginSignup = () => {
       const sanitizedEmail = sanitizeEmail(email); 
       localStorage.setItem("email", email);
       localStorage.setItem("sanitizedEmail", sanitizedEmail);
+
+      const userData = {
+        email: email,
+        sanitizeEmail: sanitizeEmail(email),
+        name: name,
+        role: role.toLowerCase(),
+        status: "inactive"
+      };
+
+      try {
+        const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/add-user`, userData);
+        console.log("user data added to mongodb", res.data);
+      } catch (err) {
+        console.error("Error saving user to MongoDB:", err);
+        throw new Error("Failed to save user data");
+      }
 
       if (role.toLowerCase() === "employee") {
         try {

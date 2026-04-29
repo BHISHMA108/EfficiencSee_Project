@@ -3,9 +3,9 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  firebaseUid: { type: String, required: true, unique: true},
-  role: { type: String, enum: ["employee", "manager"], required: true }, // Role added
+  sanitizedEmail: { type: String },
+  role: { type: String, enum: ["employee", "manager"], required: true },
+  status:{type : String , default:"inactive",enum:["active","inactive"]},
 });
 
-module.exports = mongoose.model("Users", userSchema);
+module.exports = mongoose.model("User", userSchema, "Users");

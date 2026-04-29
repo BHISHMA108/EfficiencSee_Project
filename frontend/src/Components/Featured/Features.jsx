@@ -1,6 +1,6 @@
 // Features.jsx (Enhanced)
 import { motion } from "framer-motion";
-import { BarChart, Users, Activity } from "react-feather";
+import { BarChart, Users, Activity, Monitor, Shield, Zap } from "react-feather";
 
 const features = [
   {
@@ -15,8 +15,23 @@ const features = [
   },
   {
     icon: <Activity size={48} className="text-pink-500" />,
-    title: "AI Evaluation",
-    description: "Machine learning powered insights for optimal resource allocation"
+    title: "Active Monitoring App Tracking",
+    description: "Detailed logging of active applications to analyze productive time"
+  },
+  {
+    icon: <Monitor size={48} className="text-blue-500" />,
+    title: "Desktop Monitoring Agent",
+    description: "Background desktop application to track active windows and idle time automatically"
+  },
+  {
+    icon: <Shield size={48} className="text-green-500" />,
+    title: "Role-Based Access Control",
+    description: "Distinct interfaces and permissions for Employees, Managers, and System Admins"
+  },
+  {
+    icon: <Zap size={48} className="text-yellow-500" />,
+    title: "Real-Time Updates",
+    description: "Live status updates via WebSockets for instant manager visibility"
   }
 ];
 

@@ -19,7 +19,8 @@
     "mongoose": "^8.12.1",
     "peers": "^0.1.0",
     "pyinstaller": "^0.0.1",
-    "redis": "^5.12.1"
+    "redis": "^5.12.1",
+    "socket.io": "^4.8.3"
   },
   "description": ""
 }

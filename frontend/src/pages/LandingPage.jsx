@@ -3,6 +3,7 @@ import Navbar from "../Components/Navbar/Navbar";
 import Company from "../Components/Company";
 import Featured from "../Components/Featured/Featured";
 import Features from "../Components/Featured/Features";
+import TechStack from "../Components/TechStack";
 import Footer from "../Components/footer/EndFooter.jsx";
 
 const LandingPage = () => {
@@ -16,6 +17,9 @@ const LandingPage = () => {
       <section id="features" data-scroll-section>
         <Featured />
         <Features />
+      </section>
+      <section id="techstack" data-scroll-section>
+        <TechStack />
       </section>
       <section id="contact" data-scroll-section>
         <Footer />
