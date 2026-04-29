@@ -11,6 +11,7 @@ node_modules/
 
 # Desktop agent (contains ML model)
 desktop_app/
+other/
 
 # Build folders
 dist/
