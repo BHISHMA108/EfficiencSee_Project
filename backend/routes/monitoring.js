@@ -72,8 +72,14 @@ router.get('/status/:employeeId', async (req, res) => {
     // Default to 'stop' if not found
     const key = `monitor:status:${employeeId}`;
     const status = await client.get(key);
-    // const status = monitoringStatus[employeeId] || "stop";
-    res.json({ status: status || "inactive"});
+    
+    // Map active/inactive to start/stop for desktop agent compatibility
+    let agentStatus = "stop";
+    if (status === "active") {
+        agentStatus = "start";
+    }
+    
+    res.json({ status: agentStatus });
 });
 
 // Called by the Python Desktop Agent to upload metrics when a session ends
